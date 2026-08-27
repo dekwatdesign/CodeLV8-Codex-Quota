@@ -43,13 +43,20 @@ test("quota bars use the full available widget column", async (t) => {
   const page = await browser.newPage({ viewport: { width: 456, height: 240 }, deviceScaleFactor: 1 });
   await page.addInitScript(() => {
     window.__dragCalls = [];
+    window.__startupCalls = [];
+    let startWithWindows = false;
     window.routerControl = {
       platform: "win32",
-      getOverlaySettings: async () => ({ version: 1, enabled: true, expanded: false }),
-      showOverlay: async () => ({ version: 1, enabled: true, expanded: false }),
-      hideOverlay: async () => ({ version: 1, enabled: false, expanded: false }),
-      setOverlayEnabled: async (enabled) => ({ version: 1, enabled, expanded: false }),
-      setOverlayExpanded: async (expanded) => ({ version: 1, enabled: true, expanded }),
+      getOverlaySettings: async () => ({ version: 1, enabled: true, expanded: false, startWithWindows }),
+      showOverlay: async () => ({ version: 1, enabled: true, expanded: false, startWithWindows }),
+      hideOverlay: async () => ({ version: 1, enabled: false, expanded: false, startWithWindows }),
+      setOverlayEnabled: async (enabled) => ({ version: 1, enabled, expanded: false, startWithWindows }),
+      setOverlayExpanded: async (expanded) => ({ version: 1, enabled: true, expanded, startWithWindows }),
+      setStartWithWindows: async (enabled) => {
+        startWithWindows = enabled;
+        window.__startupCalls.push(enabled);
+        return { version: 1, enabled: true, expanded: true, startWithWindows };
+      },
       startOverlayDrag: async () => window.__dragCalls.push({ type: "start" }),
       moveOverlayBy: async (deltaX, deltaY) => window.__dragCalls.push({ type: "move", deltaX, deltaY }),
       endOverlayDrag: async () => window.__dragCalls.push({ type: "end" }),
@@ -85,6 +92,11 @@ test("quota bars use the full available widget column", async (t) => {
   await page.locator(".overlay-expand-button").click();
   await page.locator(".overlay-details").waitFor();
   assert.equal(await page.locator(".overlay-expand-button").getAttribute("aria-expanded"), "true");
+  const startupToggle = page.locator(".overlay-startup-toggle");
+  assert.equal(await startupToggle.getAttribute("aria-pressed"), "false");
+  await startupToggle.click();
+  assert.equal(await startupToggle.getAttribute("aria-pressed"), "true");
+  assert.deepEqual(await page.evaluate(() => window.__startupCalls), [true]);
   await page.locator(".overlay-summary").click();
   assert.equal(await page.locator(".overlay-expand-button").getAttribute("aria-expanded"), "true");
 

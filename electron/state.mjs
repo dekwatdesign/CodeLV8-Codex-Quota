@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   version: 1,
   enabled: true,
   expanded: false,
+  startWithWindows: false,
 });
 
 function normalizePosition(value) {
@@ -21,6 +22,7 @@ export function normalizeSettings(value) {
     version: 1,
     enabled: value.enabled !== false,
     expanded: value.expanded === true,
+    startWithWindows: value.startWithWindows === true,
   };
   const position = normalizePosition(value.position);
   if (position) settings.position = position;

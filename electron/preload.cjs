@@ -7,6 +7,7 @@ const api = {
   hideOverlay: () => ipcRenderer.invoke("overlay:hide"),
   setOverlayEnabled: (enabled) => ipcRenderer.invoke("overlay:set-enabled", enabled),
   setOverlayExpanded: (expanded) => ipcRenderer.invoke("overlay:set-expanded", expanded),
+  setStartWithWindows: (enabled) => ipcRenderer.invoke("overlay:set-start-with-windows", enabled),
   startOverlayDrag: () => ipcRenderer.invoke("overlay:drag-start"),
   moveOverlayBy: (deltaX, deltaY) => ipcRenderer.invoke("overlay:drag-move", deltaX, deltaY),
   endOverlayDrag: () => ipcRenderer.invoke("overlay:drag-end"),

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
-import { Activity, AlertCircle, ChevronDown, ChevronUp, Gauge, X, Zap } from "lucide-react";
+import { Activity, AlertCircle, ChevronDown, ChevronUp, Gauge, Power, X, Zap } from "lucide-react";
 import quotaIcon from "../assets/codex-quota.png";
 import { remainingPercent } from "./lib";
 import type { AccountUsage, ProviderUsageSnapshot, RouterControlApi, RouterHealth, UsageMetric } from "./types";
@@ -67,6 +67,7 @@ export default function OverlayApp() {
   const [usage, setUsage] = useState<ProviderUsageSnapshot>();
   const [accountUsage, setAccountUsage] = useState<AccountUsage>();
   const [expanded, setExpanded] = useState(false);
+  const [startWithWindows, setStartWithWindows] = useState(false);
   const [loadError, setLoadError] = useState<string>();
   const dragState = useRef<{
     pointerId: number;
@@ -108,7 +109,10 @@ export default function OverlayApp() {
     if (!api) return;
     let active = true;
     void Promise.all([refreshHealth(), refreshUsage(), refreshAccountUsage(), api.getOverlaySettings().then((settings) => {
-      if (active) setExpanded(settings.expanded);
+      if (active) {
+        setExpanded(settings.expanded);
+        setStartWithWindows(settings.startWithWindows);
+      }
     }).catch(() => undefined)]);
     const healthTimer = window.setInterval(() => void refreshHealth(), 750);
     const usageTimer = window.setInterval(() => void Promise.all([refreshUsage(), refreshAccountUsage()]), 30_000);
@@ -119,7 +123,10 @@ export default function OverlayApp() {
     };
   }, [api, refreshAccountUsage, refreshHealth, refreshUsage]);
 
-  useEffect(() => api?.onOverlaySettings?.((settings) => setExpanded(settings.expanded)), [api]);
+  useEffect(() => api?.onOverlaySettings?.((settings) => {
+    setExpanded(settings.expanded);
+    setStartWithWindows(settings.startWithWindows);
+  }), [api]);
 
   useEffect(() => {
     const theme = localStorage.getItem("model-router-control-center-theme");
@@ -154,6 +161,17 @@ export default function OverlayApp() {
     }
   };
 
+  const toggleStartWithWindows = async () => {
+    const next = !startWithWindows;
+    setStartWithWindows(next);
+    try {
+      const settings = await api?.setStartWithWindows(next);
+      if (settings) setStartWithWindows(settings.startWithWindows);
+    } catch {
+      setStartWithWindows(!next);
+    }
+  };
+
   const hide = async (event: MouseEvent) => {
     event.stopPropagation();
     await api?.hideOverlay();
@@ -169,7 +187,7 @@ export default function OverlayApp() {
   const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
     if (event.button !== 0) return;
     const target = event.target;
-    if (target instanceof Element && target.closest("button, progress")) return;
+    if (target instanceof Element && target.closest("button, input, label, progress")) return;
     const start = api?.startOverlayDrag?.();
     dragState.current = {
       pointerId: event.pointerId,
@@ -295,6 +313,26 @@ export default function OverlayApp() {
             )) : (
               <div className="overlay-empty"><AlertCircle aria-hidden size={14} /><span>No active requests</span></div>
             )}
+            {api?.platform === "win32" ? (
+              <div className="overlay-settings">
+                <div className="overlay-detail-heading"><span>การตั้งค่า</span><small>Windows</small></div>
+                <button
+                  className={`overlay-startup-toggle ${startWithWindows ? "is-on" : ""}`}
+                  type="button"
+                  title="เปิดหรือปิดการเริ่มพร้อม Windows"
+                  aria-label="เริ่มพร้อม Windows"
+                  aria-pressed={startWithWindows}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void toggleStartWithWindows();
+                  }}
+                >
+                  <Power aria-hidden size={14} strokeWidth={2} />
+                  <span>เริ่มพร้อม Windows</span>
+                  <strong>{startWithWindows ? "เปิด" : "ปิด"}</strong>
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

@@ -1,6 +1,6 @@
 {
   "name": "codex-quota",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Standalone Codex quota remaining overlay",
   "author": "CodeLV8",
   "private": true,

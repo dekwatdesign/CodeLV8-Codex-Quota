@@ -91,6 +91,22 @@ if (!hasSingleInstance) {
     dragActive = false;
   }
 
+  function applyStartWithWindows(enabled) {
+    if (process.platform !== "win32") return true;
+    try {
+      const options = {
+        openAtLogin: enabled === true,
+        path: process.execPath,
+      };
+      if (!app.isPackaged) options.args = [app.getAppPath()];
+      app.setLoginItemSettings(options);
+      return true;
+    } catch (error) {
+      console.error("Unable to update Windows startup setting", error);
+      return false;
+    }
+  }
+
   function showWindow() {
     if (!overlayWindow || overlayWindow.isDestroyed()) return;
     resizeOverlay();
@@ -173,6 +189,15 @@ if (!hasSingleInstance) {
       emitSettings();
       return settings;
     });
+    ipcMain.handle("overlay:set-start-with-windows", (_event, enabled) => {
+      const next = enabled === true;
+      if (!applyStartWithWindows(next)) {
+        throw new Error("Unable to update Windows startup setting");
+      }
+      settings = writeSettings(settingsFile, { ...settings, startWithWindows: next });
+      emitSettings();
+      return settings;
+    });
     ipcMain.handle("quota:get-health", () => client.getHealth());
     ipcMain.handle("quota:get-account-usage", () => client.getAccountUsage());
     ipcMain.handle("quota:get-provider-usage", () => client.getProviderUsage());
@@ -181,6 +206,7 @@ if (!hasSingleInstance) {
   async function createWindow() {
     settingsFile = path.join(app.getPath("userData"), "state.json");
     settings = readSettings(settingsFile);
+    applyStartWithWindows(settings.startWithWindows);
     client = new QuotaClient({ demo: isDemo });
     client.start();
     registerIpc();

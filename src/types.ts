@@ -82,6 +82,7 @@ export interface OverlaySettings {
   version: 1;
   enabled: boolean;
   expanded: boolean;
+  startWithWindows: boolean;
   position?: {
     x: number;
     y: number;
@@ -95,6 +96,7 @@ export interface RouterControlApi {
   hideOverlay(): Promise<OverlaySettings>;
   setOverlayEnabled(enabled: boolean): Promise<OverlaySettings>;
   setOverlayExpanded(expanded: boolean): Promise<OverlaySettings>;
+  setStartWithWindows(enabled: boolean): Promise<OverlaySettings>;
   startOverlayDrag?(): Promise<void>;
   moveOverlayBy?(deltaX: number, deltaY: number): Promise<void>;
   endOverlayDrag?(): Promise<void>;

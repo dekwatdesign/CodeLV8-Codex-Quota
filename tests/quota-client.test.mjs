@@ -37,17 +37,19 @@ test("calculates clamped quota remaining percentages", () => {
   assert.equal(remainingPercent({ usedPercent: 140 }), 0);
 });
 
-test("normalizes a persisted overlay position without changing legacy settings", () => {
+test("normalizes a persisted overlay position and startup setting", () => {
   assert.deepEqual(normalizeSettings({ enabled: true, expanded: true, position: { x: 128.7, y: "64" } }), {
     version: 1,
     enabled: true,
     expanded: true,
+    startWithWindows: false,
     position: { x: 129, y: 64 },
   });
-  assert.deepEqual(normalizeSettings({ enabled: false, position: { x: "invalid", y: 20 } }), {
+  assert.deepEqual(normalizeSettings({ enabled: false, startWithWindows: true, position: { x: "invalid", y: 20 } }), {
     version: 1,
     enabled: false,
     expanded: false,
+    startWithWindows: true,
   });
 });
 
