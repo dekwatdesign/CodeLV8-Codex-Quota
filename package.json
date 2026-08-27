@@ -15,7 +15,7 @@
     "check": "tsc --noEmit && node --check electron/main.mjs && node --check electron/preload.cjs && node --check electron/quota-client.mjs && node --check electron/codex-account-usage.mjs && node --check electron/codex-binary.mjs && node --check electron/spawnable-command.mjs && node --check electron/state.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
     "electron:dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
-    "electron:build": "npm run build && electron-builder --win dir",
+    "electron:build": "npm run build && electron-builder --win nsis dir --x64",
     "start": "electron ."
   },
   "dependencies": {

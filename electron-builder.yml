@@ -13,6 +13,17 @@ files:
   - package.json
 win:
   target:
+    - target: nsis
+      arch:
+        - x64
     - target: dir
       arch:
         - x64
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Codex Quota
+  runAfterFinish: false

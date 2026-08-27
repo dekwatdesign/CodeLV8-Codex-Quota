@@ -11,7 +11,7 @@ Widget แบบ always-on-top สำหรับดู quota ที่เหล
 .\Start-CodexQuota.ps1
 ```
 
-ไฟล์ที่แพ็กแล้วอยู่ที่ `release\win-unpacked\Codex Quota.exe` ชื่อผลิตภัณฑ์และชื่อหน้าต่างคือ **Codex Quota**
+ตัวติดตั้ง Windows 11 64-bit (x64/AMD64 ซึ่งใช้ได้กับทั้ง AMD และ Intel รุ่น x64) อยู่ที่ `release\Codex-Quota-1.0.0-x64.exe` ส่วนไฟล์แพ็กแบบ unpacked อยู่ที่ `release\win-unpacked\Codex Quota.exe` ชื่อผลิตภัณฑ์และชื่อหน้าต่างคือ **Codex Quota** ตัวติดตั้งเป็น NSIS แบบ wizard ติดตั้งต่อผู้ใช้และเลือกโฟลเดอร์ปลายทางได้
 
 สำหรับตรวจ layout โดยไม่ต้องพึ่งบัญชีที่ล็อกอิน ให้ใช้ข้อมูลจำลองชั่วคราว:
 
@@ -44,5 +44,7 @@ npm run check
 npm test
 npm run electron:build
 ```
+
+คำสั่ง build จะสร้างทั้ง installer NSIS x64 และแพ็กเกจ `win-unpacked` สำหรับตรวจสอบเบื้องต้น
 
 การทดสอบ renderer ใช้ข้อมูล quota 92% และ 40% ตรวจความกว้างจริงของคอลัมน์และ progress bar ที่ viewport 456px รวมถึงตรวจชื่อผลิตภัณฑ์ `Codex Quota`
