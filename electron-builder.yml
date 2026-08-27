@@ -1,0 +1,18 @@
+appId: io.codelv8.codexquota
+productName: Codex Quota
+artifactName: Codex-Quota-${version}-${arch}.${ext}
+icon: assets/codex-quota.ico
+asar: true
+directories:
+  output: release
+files:
+  - dist-renderer/**/*
+  - electron/**/*
+  - assets/**/*
+  - "!assets/codex-router.png"
+  - package.json
+win:
+  target:
+    - target: dir
+      arch:
+        - x64
