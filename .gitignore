@@ -1,7 +1,47 @@
+# แพ็กเกจและไลบรารีภายนอก
 node_modules/
+.pnp/
+.pnp.*
+.yarn/
+
+# ผลลัพธ์จาก Vite และ Electron Builder
 dist-renderer/
-release/
-build/
 dist/
-__pycache__/
+build/
+out/
+release/
+release-*/
+*.asar
+
+# รายงานการทดสอบและแคช
+coverage/
+.nyc_output/
+.vite/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# บันทึกการทำงานและไฟล์ชั่วคราว
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.pid
+*.pid.lock
+__pycache__/
+
+# ค่าตั้งค่าในเครื่องและข้อมูลลับ
+.env
+.env.*
+!.env.example
+electron-builder.env
+
+# ไฟล์จากระบบปฏิบัติการและเครื่องมือแก้ไข
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+*.swp
+*.swo
+*~
