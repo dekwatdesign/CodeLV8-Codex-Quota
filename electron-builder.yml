@@ -27,3 +27,8 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: Codex Quota
   runAfterFinish: false
+publish:
+  provider: github
+  owner: dekwatdesign
+  repo: CodeLV8-Codex-Quota
+  releaseType: release

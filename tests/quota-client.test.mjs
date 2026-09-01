@@ -13,6 +13,7 @@ import {
   readCodexAccountUsage,
 } from "../electron/codex-account-usage.mjs";
 import { normalizeSettings } from "../electron/state.mjs";
+import { createUpdateManager, GITHUB_UPDATE_CONFIG } from "../electron/updater.mjs";
 
 test("reports a starting state before the first Codex rate-limit snapshot", () => {
   const client = new QuotaClient({ command: "codex" });
@@ -97,6 +98,8 @@ test("normalizes the account responses used by the Codex Router tray", () => {
 
   assert.equal(usage.primary.remainingPercent, 46);
   assert.equal(usage.secondary.remainingPercent, 88);
+  assert.equal(usage.primary.resetsAt, 1_800_000_000);
+  assert.equal(usage.secondary.resetsAt, 1_700_000_000);
   assert.deepEqual(usage.dailyUsageBuckets, [
     { startDate: "2026-07-19", tokens: 100 },
     { startDate: "2026-07-20", tokens: 200 },
@@ -147,4 +150,48 @@ test("initializes the app-server before requesting both account payloads", async
   assert.equal(invocation.options.windowsVerbatimArguments, true);
   assert.equal(result.primary.remainingPercent, 92);
   assert.equal(result.secondary.remainingPercent, 40);
+});
+
+test("checks GitHub releases, tracks download progress, and installs a downloaded update", async () => {
+  const updater = new EventEmitter();
+  let feedConfig;
+  let installArgs;
+  updater.setFeedURL = (config) => { feedConfig = config; };
+  updater.checkForUpdates = async () => {
+    updater.emit("checking-for-update");
+    updater.emit("update-available", { version: "1.2.0", releaseName: "Codex Quota v1.2.0" });
+    updater.emit("download-progress", { percent: 42, bytesPerSecond: 1000, transferred: 42, total: 100 });
+    updater.emit("update-downloaded", { version: "1.2.0" });
+    return { isUpdateAvailable: true };
+  };
+  updater.quitAndInstall = (...args) => { installArgs = args; };
+
+  const states = [];
+  const manager = createUpdateManager({
+    appVersion: "1.1.0",
+    isPackaged: true,
+    platform: "win32",
+    updater,
+    checkIntervalMs: 60_000,
+    onStateChange: (state) => states.push(state),
+  });
+
+  manager.start();
+  await manager.check({ manual: true });
+  assert.deepEqual(feedConfig, GITHUB_UPDATE_CONFIG);
+  assert.equal(manager.getState().status, "downloaded");
+  assert.equal(manager.getState().version, "1.2.0");
+  assert.ok(states.some((state) => state.status === "downloading" && state.percent === 42));
+
+  manager.install();
+  assert.equal(manager.getState().status, "installing");
+  assert.deepEqual(installArgs, [false, true]);
+  manager.stop();
+});
+
+test("disables release checks outside a packaged Windows build", async () => {
+  const manager = createUpdateManager({ appVersion: "1.1.0", isPackaged: false, platform: "win32" });
+  assert.deepEqual(manager.getState(), { status: "disabled", currentVersion: "1.1.0" });
+  assert.equal(manager.start().status, "disabled");
+  assert.equal((await manager.check()).status, "disabled");
 });

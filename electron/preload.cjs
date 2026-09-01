@@ -8,6 +8,9 @@ const api = {
   setOverlayEnabled: (enabled) => ipcRenderer.invoke("overlay:set-enabled", enabled),
   setOverlayExpanded: (expanded) => ipcRenderer.invoke("overlay:set-expanded", expanded),
   setStartWithWindows: (enabled) => ipcRenderer.invoke("overlay:set-start-with-windows", enabled),
+  getUpdateState: () => ipcRenderer.invoke("update:get-state"),
+  checkForUpdates: () => ipcRenderer.invoke("update:check"),
+  installUpdate: () => ipcRenderer.invoke("update:install"),
   startOverlayDrag: () => ipcRenderer.invoke("overlay:drag-start"),
   moveOverlayBy: (deltaX, deltaY) => ipcRenderer.invoke("overlay:drag-move", deltaX, deltaY),
   endOverlayDrag: () => ipcRenderer.invoke("overlay:drag-end"),
@@ -18,6 +21,11 @@ const api = {
     const handler = (_event, settings) => listener(settings);
     ipcRenderer.on("overlay:settings", handler);
     return () => ipcRenderer.removeListener("overlay:settings", handler);
+  },
+  onUpdateState: (listener) => {
+    const handler = (_event, state) => listener(state);
+    ipcRenderer.on("update:state", handler);
+    return () => ipcRenderer.removeListener("update:state", handler);
   },
 };
 

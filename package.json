@@ -1,8 +1,12 @@
 {
   "name": "codex-quota",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Standalone Codex quota remaining overlay",
   "author": "CodeLV8",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dekwatdesign/CodeLV8-Codex-Quota.git"
+  },
   "private": true,
   "type": "module",
   "main": "electron/main.mjs",
@@ -12,13 +16,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "check": "tsc --noEmit && node --check electron/main.mjs && node --check electron/preload.cjs && node --check electron/quota-client.mjs && node --check electron/codex-account-usage.mjs && node --check electron/codex-binary.mjs && node --check electron/spawnable-command.mjs && node --check electron/state.mjs",
+    "check": "tsc --noEmit && node --check electron/main.mjs && node --check electron/preload.cjs && node --check electron/quota-client.mjs && node --check electron/codex-account-usage.mjs && node --check electron/codex-binary.mjs && node --check electron/spawnable-command.mjs && node --check electron/state.mjs && node --check electron/updater.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
     "electron:dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
     "electron:build": "npm run build && electron-builder --win nsis dir --x64",
     "start": "electron ."
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "lucide-react": "1.31.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"

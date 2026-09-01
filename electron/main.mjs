@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { QuotaClient } from "./quota-client.mjs";
 import { readSettings, writeSettings } from "./state.mjs";
+import { createUpdateManager } from "./updater.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WINDOW_SIZE = Object.freeze({ width: 456, compactHeight: 240, expandedHeight: 360 });
@@ -17,6 +18,7 @@ if (!hasSingleInstance) {
   let settingsFile;
   let settings;
   let client;
+  let updateManager;
   let isQuitting = false;
   let positionSaveTimer;
   let dragActive = false;
@@ -24,6 +26,11 @@ if (!hasSingleInstance) {
   function emitSettings() {
     if (!overlayWindow || overlayWindow.isDestroyed()) return;
     overlayWindow.webContents.send("overlay:settings", settings);
+  }
+
+  function emitUpdateState() {
+    if (!overlayWindow || overlayWindow.isDestroyed()) return;
+    overlayWindow.webContents.send("update:state", updateManager?.getState());
   }
 
   function boundsFor(expanded, preferredPosition) {
@@ -198,6 +205,9 @@ if (!hasSingleInstance) {
       emitSettings();
       return settings;
     });
+    ipcMain.handle("update:get-state", () => updateManager?.getState());
+    ipcMain.handle("update:check", () => updateManager?.check({ manual: true }));
+    ipcMain.handle("update:install", () => updateManager?.install());
     ipcMain.handle("quota:get-health", () => client.getHealth());
     ipcMain.handle("quota:get-account-usage", () => client.getAccountUsage());
     ipcMain.handle("quota:get-provider-usage", () => client.getProviderUsage());
@@ -207,6 +217,13 @@ if (!hasSingleInstance) {
     settingsFile = path.join(app.getPath("userData"), "state.json");
     settings = readSettings(settingsFile);
     applyStartWithWindows(settings.startWithWindows);
+    updateManager = createUpdateManager({
+      appVersion: app.getVersion(),
+      isPackaged: app.isPackaged,
+      platform: process.platform,
+      enabled: !isDemo,
+      onStateChange: emitUpdateState,
+    });
     client = new QuotaClient({ demo: isDemo });
     client.start();
     registerIpc();
@@ -250,6 +267,8 @@ if (!hasSingleInstance) {
     const devUrl = process.env.VITE_DEV_SERVER_URL;
     if (devUrl) await overlayWindow.loadURL(devUrl);
     else await overlayWindow.loadFile(path.join(__dirname, "..", "dist-renderer", "index.html"));
+    updateManager.start();
+    emitUpdateState();
   }
 
   app.on("second-instance", () => {
@@ -271,6 +290,7 @@ if (!hasSingleInstance) {
     saveOverlayPosition();
     tray?.destroy();
     tray = undefined;
+    updateManager?.stop();
     client?.stop();
   });
   app.on("window-all-closed", (event) => {

@@ -69,10 +69,11 @@ export function accountUsageFromSnapshot(snapshot, fetchedAt = new Date().toISOS
 }
 
 export function demoAccountUsage() {
+  const now = Math.floor(Date.now() / 1000);
   return accountUsageFromSnapshot({
     planType: "ChatGPT",
-    primary: { usedPercent: 8, windowDurationMins: 300 },
-    secondary: { usedPercent: 60, windowDurationMins: 10_080 },
+    primary: { usedPercent: 8, windowDurationMins: 300, resetsAt: now + (2 * 60 * 60) },
+    secondary: { usedPercent: 60, windowDurationMins: 10_080, resetsAt: now + (5 * 24 * 60 * 60) },
   });
 }
 

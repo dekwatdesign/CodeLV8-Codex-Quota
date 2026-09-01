@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
-import { Activity, AlertCircle, ChevronDown, ChevronUp, Gauge, Power, X, Zap } from "lucide-react";
+import { Activity, AlertCircle, ChevronDown, ChevronUp, Download, Gauge, Power, RefreshCw, X, Zap } from "lucide-react";
 import quotaIcon from "../assets/codex-quota.png";
-import { remainingPercent } from "./lib";
-import type { AccountUsage, ProviderUsageSnapshot, RouterControlApi, RouterHealth, UsageMetric } from "./types";
+import { remainingPercent, resetTimeLabel } from "./lib";
+import type { AccountUsage, ProviderUsageSnapshot, RouterControlApi, RouterHealth, UpdateState, UsageMetric } from "./types";
 import "./overlay.css";
 
 function compactNumber(value: number | undefined): string {
@@ -58,6 +58,7 @@ function quotaMetric(metric: UsageMetric | null | undefined, fallbackLabel: stri
     label: quotaLabel(metric, fallbackLabel),
     remaining,
     tone: quotaTone(remaining),
+    resetTime: resetTimeLabel(metric),
   };
 }
 
@@ -68,6 +69,7 @@ export default function OverlayApp() {
   const [accountUsage, setAccountUsage] = useState<AccountUsage>();
   const [expanded, setExpanded] = useState(false);
   const [startWithWindows, setStartWithWindows] = useState(false);
+  const [updateState, setUpdateState] = useState<UpdateState>();
   const [loadError, setLoadError] = useState<string>();
   const dragState = useRef<{
     pointerId: number;
@@ -108,12 +110,17 @@ export default function OverlayApp() {
   useEffect(() => {
     if (!api) return;
     let active = true;
+    const updateStatePromise = api.getUpdateState
+      ? api.getUpdateState().then((state) => {
+        if (active && state) setUpdateState(state);
+      }).catch(() => undefined)
+      : Promise.resolve();
     void Promise.all([refreshHealth(), refreshUsage(), refreshAccountUsage(), api.getOverlaySettings().then((settings) => {
       if (active) {
         setExpanded(settings.expanded);
         setStartWithWindows(settings.startWithWindows);
       }
-    }).catch(() => undefined)]);
+    }).catch(() => undefined), updateStatePromise]);
     const healthTimer = window.setInterval(() => void refreshHealth(), 750);
     const usageTimer = window.setInterval(() => void Promise.all([refreshUsage(), refreshAccountUsage()]), 30_000);
     return () => {
@@ -127,6 +134,8 @@ export default function OverlayApp() {
     setExpanded(settings.expanded);
     setStartWithWindows(settings.startWithWindows);
   }), [api]);
+
+  useEffect(() => api?.onUpdateState?.((state) => setUpdateState(state)), [api]);
 
   useEffect(() => {
     const theme = localStorage.getItem("model-router-control-center-theme");
@@ -169,6 +178,35 @@ export default function OverlayApp() {
       if (settings) setStartWithWindows(settings.startWithWindows);
     } catch {
       setStartWithWindows(!next);
+    }
+  };
+
+  const checkForUpdates = async () => {
+    if (!api?.checkForUpdates) return;
+    try {
+      const state = await api.checkForUpdates();
+      if (state) setUpdateState(state);
+    } catch (error) {
+      setUpdateState((current) => ({
+        status: "error",
+        currentVersion: current?.currentVersion,
+        error: String(error),
+      }));
+    }
+  };
+
+  const installUpdate = async () => {
+    if (!api?.installUpdate) return;
+    try {
+      const state = await api.installUpdate();
+      if (state) setUpdateState(state);
+    } catch (error) {
+      setUpdateState((current) => ({
+        status: "error",
+        currentVersion: current?.currentVersion,
+        version: current?.version,
+        error: String(error),
+      }));
     }
   };
 
@@ -236,6 +274,18 @@ export default function OverlayApp() {
     return `${providerLabel(provider)} · ${modelLabel(model)}`;
   }, [active?.sessionName, active?.sessionTitle, loadError, model, provider]);
 
+  const updateMessage = useMemo(() => {
+    if (!updateState) return "";
+    if (updateState.status === "checking") return "กำลังตรวจสอบจาก GitHub…";
+    if (updateState.status === "available") return `พบเวอร์ชัน ${updateState.version || "ใหม่"}`;
+    if (updateState.status === "downloading") return `กำลังดาวน์โหลด ${Math.round(updateState.percent || 0)}%`;
+    if (updateState.status === "downloaded") return `ดาวน์โหลดเวอร์ชัน ${updateState.version || "ใหม่"} แล้ว`;
+    if (updateState.status === "installing") return "กำลังติดตั้งอัปเดต…";
+    if (updateState.status === "up-to-date") return "ใช้งานเวอร์ชันล่าสุดแล้ว";
+    if (updateState.status === "error") return "ตรวจสอบอัปเดตไม่สำเร็จ";
+    return "ตรวจสอบอัปเดตอัตโนมัติเปิดอยู่";
+  }, [updateState]);
+
   return (
     <main
       className={`overlay-surface ${expanded ? "is-expanded" : ""}`}
@@ -272,6 +322,9 @@ export default function OverlayApp() {
                     value={quota.remaining}
                     aria-label={`${quota.label}: ${Math.round(quota.remaining)} percent remaining`}
                   />
+                  {quota.resetTime ? (
+                    <small className="overlay-quota-reset" title={quota.resetTime}>{quota.resetTime}</small>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -331,6 +384,47 @@ export default function OverlayApp() {
                   <span>เริ่มพร้อม Windows</span>
                   <strong>{startWithWindows ? "เปิด" : "ปิด"}</strong>
                 </button>
+                {updateState && updateState.status !== "disabled" ? (
+                  <div className={`overlay-update update-${updateState.status}`}>
+                    <div className="overlay-detail-heading"><span>อัปเดตแอป</span><small>GitHub Releases</small></div>
+                    <div className="overlay-update-row">
+                      <span className="overlay-update-message" title={updateState.error || updateMessage}>{updateMessage}</span>
+                      {updateState.status === "downloaded" ? (
+                        <button
+                          className="overlay-update-button"
+                          type="button"
+                          title="ติดตั้งอัปเดตและเปิดแอปใหม่"
+                          aria-label="ติดตั้งอัปเดตและเปิดแอปใหม่"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void installUpdate();
+                          }}
+                        >
+                          <Download aria-hidden size={13} />
+                          <span>ติดตั้ง</span>
+                        </button>
+                      ) : (
+                        <button
+                          className="overlay-update-button"
+                          type="button"
+                          title="ตรวจสอบอัปเดตจาก GitHub"
+                          aria-label="ตรวจสอบอัปเดตจาก GitHub"
+                          disabled={updateState.status === "checking" || updateState.status === "downloading" || updateState.status === "installing"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void checkForUpdates();
+                          }}
+                        >
+                          <RefreshCw aria-hidden size={13} />
+                          <span>ตรวจสอบ</span>
+                        </button>
+                      )}
+                    </div>
+                    {updateState.status === "downloading" ? (
+                      <progress className="overlay-update-progress" max="100" value={updateState.percent || 0} aria-label={`ดาวน์โหลดอัปเดต ${Math.round(updateState.percent || 0)} เปอร์เซ็นต์`} />
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>

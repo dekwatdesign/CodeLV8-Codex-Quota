@@ -31,6 +31,15 @@ function clampPercent(value) {
   return Math.max(0, Math.min(100, number));
 }
 
+function firstFiniteNumber(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
+    const number = Number(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return null;
+}
+
 function normalizeWindow(window) {
   if (!window || typeof window !== "object") return null;
   const usedPercent = clampPercent(window.usedPercent);
@@ -40,7 +49,7 @@ function normalizeWindow(window) {
     windowDurationMins: Number.isFinite(window.windowDurationMins)
       ? window.windowDurationMins
       : null,
-    resetsAt: Number.isFinite(window.resetsAt) ? window.resetsAt : null,
+    resetsAt: firstFiniteNumber(window.resetsAt, window.resetAt),
   };
 }
 

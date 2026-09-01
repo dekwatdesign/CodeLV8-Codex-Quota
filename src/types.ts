@@ -89,6 +89,31 @@ export interface OverlaySettings {
   };
 }
 
+export type UpdateStateStatus =
+  | "disabled"
+  | "idle"
+  | "checking"
+  | "available"
+  | "downloading"
+  | "downloaded"
+  | "installing"
+  | "up-to-date"
+  | "error";
+
+export interface UpdateState {
+  status: UpdateStateStatus;
+  currentVersion?: string;
+  version?: string;
+  releaseName?: string;
+  releaseDate?: string;
+  percent?: number;
+  bytesPerSecond?: number;
+  transferred?: number;
+  total?: number;
+  error?: string;
+  checkedAt?: string;
+}
+
 export interface RouterControlApi {
   readonly platform: string;
   getOverlaySettings(): Promise<OverlaySettings>;
@@ -97,6 +122,9 @@ export interface RouterControlApi {
   setOverlayEnabled(enabled: boolean): Promise<OverlaySettings>;
   setOverlayExpanded(expanded: boolean): Promise<OverlaySettings>;
   setStartWithWindows(enabled: boolean): Promise<OverlaySettings>;
+  getUpdateState?(): Promise<UpdateState | undefined>;
+  checkForUpdates?(): Promise<UpdateState | undefined>;
+  installUpdate?(): Promise<UpdateState | undefined>;
   startOverlayDrag?(): Promise<void>;
   moveOverlayBy?(deltaX: number, deltaY: number): Promise<void>;
   endOverlayDrag?(): Promise<void>;
@@ -104,6 +132,7 @@ export interface RouterControlApi {
   getAccountUsage(): Promise<AccountUsage>;
   getProviderUsage(): Promise<ProviderUsageSnapshot>;
   onOverlaySettings?(listener: (settings: OverlaySettings) => void): () => void;
+  onUpdateState?(listener: (state: UpdateState) => void): () => void;
 }
 
 declare global {

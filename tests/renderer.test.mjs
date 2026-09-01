@@ -62,8 +62,8 @@ test("quota bars use the full available widget column", async (t) => {
       endOverlayDrag: async () => window.__dragCalls.push({ type: "end" }),
       getHealth: async () => ({ ok: false, error: "Codex app-server unavailable", activity: { state: "offline", activeCount: 0, active: [] } }),
       getAccountUsage: async () => ({
-        primary: { kind: "quota", usedPercent: 54, windowDurationMins: 10_080 },
-        secondary: { kind: "quota", usedPercent: 12, windowDurationMins: 300 },
+        primary: { kind: "quota", usedPercent: 54, windowDurationMins: 10_080, resetsAt: 1_800_000_000 },
+        secondary: { kind: "quota", usedPercent: 12, windowDurationMins: 300, resetsAt: 1_900_000_000 },
       }),
       getProviderUsage: async () => ({ providers: [] }),
       onOverlaySettings: () => () => {},
@@ -80,6 +80,7 @@ test("quota bars use the full available widget column", async (t) => {
       quotaWidth: quotas?.getBoundingClientRect().width || 0,
       barWidths: bars.map((bar) => bar.getBoundingClientRect().width),
       labels: [...document.querySelectorAll(".overlay-quota-label")].map((row) => row.textContent?.trim()),
+      resetTimes: [...document.querySelectorAll(".overlay-quota-reset")].map((row) => row.textContent?.trim()),
     };
   });
 
@@ -135,6 +136,8 @@ test("quota bars use the full available widget column", async (t) => {
   assert.equal(measurements.barWidths.length, 2);
   for (const width of measurements.barWidths) assert.ok(Math.abs(width - measurements.quotaWidth) < 1, `${width} != ${measurements.quotaWidth}`);
   assert.deepEqual(measurements.labels, ["Weekly limit46%", "5-hour limit88%"]);
+  assert.equal(measurements.resetTimes.length, 2);
+  for (const resetTime of measurements.resetTimes) assert.match(resetTime, /^Resets at .+/);
 
   for (const width of [320, 375, 768, 1440]) {
     await page.setViewportSize({ width, height: 240 });
@@ -148,4 +151,58 @@ test("quota bars use the full available widget column", async (t) => {
     assert.ok(responsive.scrollWidth <= width, `horizontal overflow at ${width}px`);
     for (const barWidth of responsive.barWidths) assert.ok(Math.abs(barWidth - responsive.quotaWidth) < 1, `bar mismatch at ${width}px`);
   }
+});
+
+test("shows GitHub update status and exposes check/install actions", async (t) => {
+  const server = await startStaticServer();
+  const address = server.address();
+  const browser = await chromium.launch({ headless: true });
+  t.after(async () => {
+    await browser.close();
+    await new Promise((resolve) => server.close(resolve));
+  });
+
+  const page = await browser.newPage({ viewport: { width: 456, height: 360 }, deviceScaleFactor: 1 });
+  await page.addInitScript(() => {
+    let updateState = { status: "up-to-date", currentVersion: "1.1.0" };
+    const updateListeners = [];
+    window.routerControl = {
+      platform: "win32",
+      getOverlaySettings: async () => ({ version: 1, enabled: true, expanded: true, startWithWindows: false }),
+      showOverlay: async () => ({ version: 1, enabled: true, expanded: true, startWithWindows: false }),
+      hideOverlay: async () => ({ version: 1, enabled: false, expanded: true, startWithWindows: false }),
+      setOverlayEnabled: async (enabled) => ({ version: 1, enabled, expanded: true, startWithWindows: false }),
+      setOverlayExpanded: async (expanded) => ({ version: 1, enabled: true, expanded, startWithWindows: false }),
+      setStartWithWindows: async (startWithWindows) => ({ version: 1, enabled: true, expanded: true, startWithWindows }),
+      getUpdateState: async () => updateState,
+      checkForUpdates: async () => {
+        updateState = { status: "downloaded", currentVersion: "1.1.0", version: "1.2.0" };
+        updateListeners.forEach((listener) => listener(updateState));
+        return updateState;
+      },
+      installUpdate: async () => {
+        updateState = { status: "installing", currentVersion: "1.1.0", version: "1.2.0" };
+        updateListeners.forEach((listener) => listener(updateState));
+        return updateState;
+      },
+      getHealth: async () => ({ ok: true, activity: { state: "idle", activeCount: 0, active: [] } }),
+      getAccountUsage: async () => ({}),
+      getProviderUsage: async () => ({ providers: [] }),
+      onOverlaySettings: () => () => {},
+      onUpdateState: (listener) => {
+        updateListeners.push(listener);
+        return () => updateListeners.splice(updateListeners.indexOf(listener), 1);
+      },
+    };
+  });
+
+  await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
+  await page.locator(".overlay-update").waitFor();
+  assert.match(await page.locator(".overlay-update-message").textContent(), /เวอร์ชันล่าสุด/);
+  await page.getByRole("button", { name: "ตรวจสอบอัปเดตจาก GitHub" }).click();
+  await page.getByRole("button", { name: "ติดตั้งอัปเดตและเปิดแอปใหม่" }).waitFor();
+  assert.match(await page.locator(".overlay-update-message").textContent(), /ดาวน์โหลดเวอร์ชัน 1\.2\.0/);
+  await page.getByRole("button", { name: "ติดตั้งอัปเดตและเปิดแอปใหม่" }).click();
+  await page.waitForTimeout(10);
+  assert.match(await page.locator(".overlay-update-message").textContent(), /กำลังติดตั้ง/);
 });
